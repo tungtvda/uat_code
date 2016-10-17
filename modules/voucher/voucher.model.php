@@ -31,7 +31,7 @@ class VoucherModel extends BaseModel
 
     private $module_dir = "modules/voucher/";
 
-    private $module_default_url = "/main/agent/index";
+    private $module_default_url = "/agent/voucher/index";
 
     private $module_default_admin_url = "/admin/agent/index";
 
@@ -165,7 +165,7 @@ class VoucherModel extends BaseModel
             'block' => array('side_nav' => $this->module_dir . 'inc/agent/side_nav.agent.inc.php', 'common' => "false"),
             'breadcrumb' => HTML::getBreadcrumb($this->module_name, $this->module_default_agent_url, "", $this->config, "Voucher"),
             'content' => $result,
-            'content_param' => array('count' => $i, 'total_results' => $i, 'paginate' => $paginate, 'query_title' => $query_title, 'search' => $search, 'enabled_list' => CRUD::getActiveList()),
+            'content_param' => array('count' => $i, 'total_results' => $i, 'query_title' => $query_title, 'search' => $search, 'enabled_list' => CRUD::getActiveList()),
             'secure' => TRUE,
             'meta' => array('active' => "on"));
         return $this->output;
