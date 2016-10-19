@@ -381,26 +381,24 @@ class VoucherModel extends BaseModel
         }
         $sql_normal = "SELECT ID, Name, Company FROM agent WHERE " . $dk_nomal . " ORDER BY Id asc ";
         $arr_nomal = array();
+        $arr_nomal_id=array();
+        array_push($arr_nomal, array('ID'=>0,'Name'=>'All normal agent'));
         foreach ($this->dbconnect->query($sql_normal) as $row_nomal) {
             $item = array(
                 'ID' => $row_nomal['ID'],
                 'Name' => $row_nomal['Name'] . ' - ' . $row_nomal['ID'] . ' | ' . $row_nomal['Company']
             );
             array_push($arr_nomal, $item);
+            array_push($arr_nomal_id, $row_nomal['ID']);
         }
+
         $id = '';
-        if (isset($_GET['Normal_agent_id']) && $_GET['Normal_agent_id'] != '') {
+        if (isset($_GET['Normal_agent_id']) && $_GET['Normal_agent_id'] !=0&& $_GET['Normal_agent_id'] !='') {
             $id  = addslashes(strip_tags($_GET['Normal_agent_id']));
-        } else {
-            if (isset($arr_nomal[0]['ID'])) {
-                $id = $arr_nomal[0]['ID'];
-            }
+            $arr_nomal_id=array($id);
+
         }
-        if ($_SESSION['agent']['TypeID'] == '2') {
-            $dk = ' Start_date >= "' . $start_date . '" and End_date <="' . $end_date . '" and Normal_agent_id=' . $_SESSION['agent']['ID'];
-        } else {
-            $dk = ' Start_date >= "' . $start_date . '" and End_date <="' . $end_date . '" and Normal_agent_id=' . $id;
-        }
+
 
         $arr_check = array();
         //Total
@@ -431,8 +429,8 @@ class VoucherModel extends BaseModel
             $query_title = "All Results";
             $search = "off";
         }
-        $query_count = "SELECT COUNT(*) AS num FROM agent_voucher WHERE " . $dk;
-        $total_pages = $this->dbconnect->query($query_count)->fetchColumn();
+//        $query_count = "SELECT COUNT(*) AS num FROM agent_voucher WHERE " . $dk;
+        $total_pages = 0;
         $targetpage = $param['config']['SITE_DIR'] . '/agent/voucher/accountSummary';
         $limit = 10;
         $stages = 3;
@@ -452,52 +450,57 @@ class VoucherModel extends BaseModel
         }
         // Initialize Pagination
         $paginate = $crud->paginate($targetpage, $total_pages, $limit, $stages, $page);
-        $sql = "SELECT * FROM agent_voucher WHERE " . $dk . " ORDER BY Normal_agent_id asc LIMIT $start, $limit";
-        foreach ($this->dbconnect->query($sql) as $row) {
+        foreach($arr_nomal_id as $row_normal)
+        {
             $total_card = 0;
             $total_active = 0;
             $total_used = 0;
             $total_suspend = 0;
             $pay = 100;
             $balance = 0;
-            $sql_pass = "SELECT * FROM agent_voucher_password WHERE Agent_voucher_id = '" . $row['Id'] . "'";
-            foreach ($this->dbconnect->query($sql_pass) as $row_pass) {
-                $total_card++;
-                if ($row_pass['Status'] == 0) {
-                    $total_active++;
-                    $total_active_end++;
+            $dk = ' Start_date >= "' . $start_date . '" and End_date <="' . $end_date . '" and Normal_agent_id=' . $row_normal;
+            $sql = "SELECT * FROM agent_voucher WHERE " . $dk . " ORDER BY Normal_agent_id asc ";
+            foreach ($this->dbconnect->query($sql) as $row) {
+
+                $sql_pass = "SELECT * FROM agent_voucher_password WHERE Agent_voucher_id = '" . $row['Id'] . "'";
+                foreach ($this->dbconnect->query($sql_pass) as $row_pass) {
+                    $total_card++;
+                    if ($row_pass['Status'] == 0) {
+                        $total_active++;
+                        $total_active_end++;
+                    }
+                    if ($row_pass['Status'] == 1) {
+                        $total_used++;
+                        $total_used_end++;
+                    }
+                    if ($row_pass['Status'] == 2) {
+                        $total_suspend++;
+                        $total_suspend_end++;
+                    }
                 }
-                if ($row_pass['Status'] == 1) {
-                    $total_used++;
-                    $total_used_end++;
+                $total_amount = $total_card * $row['Amount'];
+                $total_card_end += $total_card;
+                $total_amount_end += $total_amount;
+                $pay_end += $pay;
+                $sql_sub = "SELECT * FROM agent WHERE ID = '" . $row['Normal_agent_id'] . "'";
+                $name = '';
+                $company = '';
+                foreach ($this->dbconnect->query($sql_sub) as $row_sub) {
+                    $name = $row_sub['Name'];
+                    $company = $row_sub['Company'];
+                    $_SESSION['agent']['Company']=$row_sub['Company'];
                 }
-                if ($row_pass['Status'] == 2) {
-                    $total_suspend++;
-                    $total_suspend_end++;
+                $balance = $total_amount - $pay;
+                $balance_end += $balance;
+                if($start_date==$end_date){
+                    $date=$start_date;
                 }
-            }
-            $total_amount = $total_card * $row['Amount'];
-            $total_card_end += $total_card;
-            $total_amount_end += $total_amount;
-            $pay_end += $pay;
-            $sql_sub = "SELECT * FROM agent WHERE ID = '" . $row['Normal_agent_id'] . "'";
-            $name = '';
-            $company = '';
-            foreach ($this->dbconnect->query($sql_sub) as $row_sub) {
-                $name = $row_sub['Name'];
-                $company = $row_sub['Company'];
-                $_SESSION['agent']['Company']=$row_sub['Company'];
-            }
-            $balance = $total_amount - $pay;
-            $balance_end += $balance;
-            if($start_date==$end_date){
-                $date=$start_date;
-            }
-            else{
-                $date=$start_date.' - '.$end_date;
+                else{
+                    $date=$start_date.' - '.$end_date;
+                }
+
             }
             $item = array(
-                'date' => $date,
                 'total_card' => $total_card,
                 'total_active' => $total_active,
                 'total_used' => $total_used,
@@ -511,6 +514,7 @@ class VoucherModel extends BaseModel
             );
             array_push($arr_push, $item);
         }
+
         $item_total_end = array(
             'total_card_end' => $total_card_end,
             'total_active_end' => $total_active_end,
@@ -534,7 +538,7 @@ class VoucherModel extends BaseModel
             'block' => array('side_nav' => $this->module_dir . 'inc/agent/side_nav.agent.inc.php', 'common' => "false"),
             'breadcrumb' => HTML::getBreadcrumb($this->module_name, $this->module_default_agent_url, "", $this->config, " Account Summary"),
             'content' => $arr_push,
-            'content_param' => array('dr_find'=>$item_dk,'total_end' => $item_total_end, 'count' => count($arr_push), 'total_results' => $total_pages, 'paginate' => $paginate, 'query_title' => $query_title, 'search' => $search, 'enabled_list' => CRUD::getActiveList(), 'agent_list' => $arr_nomal),
+            'content_param' => array('dr_find'=>$item_dk,'total_end' => $item_total_end, 'count' => count($arr_push), 'total_results' => count($arr_push), 'paginate' => $paginate, 'query_title' => $query_title, 'search' => $search, 'enabled_list' => CRUD::getActiveList(), 'agent_list' => $arr_nomal),
             'secure' => TRUE,
             'meta' => array('active' => "on"));
         return $this->output;
