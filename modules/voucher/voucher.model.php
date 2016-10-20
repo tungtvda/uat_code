@@ -458,7 +458,7 @@ class VoucherModel extends BaseModel
             $total_used = 0;
             $total_suspend = 0;
             $pay = $row_normal['Pay'];
-            $pay_end += $pay;
+
             $balance = 0;
             $dk = ' Start_date >= "' . $start_date . '" and End_date <="' . $end_date . '" and Normal_agent_id=' . $row_normal['Id'];
             $sql = "SELECT * FROM agent_voucher WHERE " . $dk . " ORDER BY Normal_agent_id asc ";
@@ -521,6 +521,7 @@ class VoucherModel extends BaseModel
                     'Balance' => $balance
                 );
                 array_push($arr_push, $item);
+                $pay_end += $pay;
             }
 
         }
