@@ -379,7 +379,7 @@ class VoucherModel extends BaseModel
         } else {
             $dk_nomal = "ParentID = '" . $_SESSION['agent']['ID'] . "'";
         }
-        $sql_normal = "SELECT ID, Name, Company FROM agent WHERE " . $dk_nomal . " ORDER BY Id asc ";
+        $sql_normal = "SELECT ID, Name, Company, Pay FROM agent WHERE " . $dk_nomal . " ORDER BY Id asc ";
         $arr_nomal = array();
         $arr_nomal_id=array();
         array_push($arr_nomal, array('ID'=>0,'Name'=>'All normal agent'));
@@ -389,7 +389,7 @@ class VoucherModel extends BaseModel
                 'Name' => $row_nomal['Name'] . ' - ' . $row_nomal['ID'] . ' | ' . $row_nomal['Company']
             );
             array_push($arr_nomal, $item);
-            array_push($arr_nomal_id, $row_nomal['ID']);
+            array_push($arr_nomal_id,array('Id'=> $row_nomal['ID'], 'Pay'=> $row_nomal['Pay']));
         }
 
         $id = '';
@@ -452,16 +452,18 @@ class VoucherModel extends BaseModel
         $paginate = $crud->paginate($targetpage, $total_pages, $limit, $stages, $page);
         foreach($arr_nomal_id as $row_normal)
         {
+            $total_amount=0;
             $total_card = 0;
             $total_active = 0;
             $total_used = 0;
             $total_suspend = 0;
-            $pay = 100;
+            $pay = $row_normal['Pay'];
+            $pay_end += $pay;
             $balance = 0;
-            $dk = ' Start_date >= "' . $start_date . '" and End_date <="' . $end_date . '" and Normal_agent_id=' . $row_normal;
+            $dk = ' Start_date >= "' . $start_date . '" and End_date <="' . $end_date . '" and Normal_agent_id=' . $row_normal['Id'];
             $sql = "SELECT * FROM agent_voucher WHERE " . $dk . " ORDER BY Normal_agent_id asc ";
+            $count_check=0;
             foreach ($this->dbconnect->query($sql) as $row) {
-
                 $sql_pass = "SELECT * FROM agent_voucher_password WHERE Agent_voucher_id = '" . $row['Id'] . "'";
                 foreach ($this->dbconnect->query($sql_pass) as $row_pass) {
                     $total_card++;
@@ -478,10 +480,10 @@ class VoucherModel extends BaseModel
                         $total_suspend_end++;
                     }
                 }
-                $total_amount = $total_card * $row['Amount'];
+                $total_amount += $total_card * $row['Amount'];
                 $total_card_end += $total_card;
-                $total_amount_end += $total_amount;
-                $pay_end += $pay;
+
+
                 $sql_sub = "SELECT * FROM agent WHERE ID = '" . $row['Normal_agent_id'] . "'";
                 $name = '';
                 $company = '';
@@ -490,8 +492,7 @@ class VoucherModel extends BaseModel
                     $company = $row_sub['Company'];
                     $_SESSION['agent']['Company']=$row_sub['Company'];
                 }
-                $balance = $total_amount - $pay;
-                $balance_end += $balance;
+
                 if($start_date==$end_date){
                     $date=$start_date;
                 }
@@ -499,20 +500,29 @@ class VoucherModel extends BaseModel
                     $date=$start_date.' - '.$end_date;
                 }
 
+                $count_check++;
             }
-            $item = array(
-                'total_card' => $total_card,
-                'total_active' => $total_active,
-                'total_used' => $total_used,
-                'total_suspend' => $total_suspend,
-                'Amount' => $total_amount,
-                'Name' => $row['Name'],
-                'Normal_agent' => $name,
-                'Company' => $company,
-                'Pay' => $pay,
-                'Balance' => $balance
-            );
-            array_push($arr_push, $item);
+            $total_amount_end += $total_amount;
+            $balance = $total_amount - $pay;
+            $balance_end += $balance;
+            if($count_check>0)
+            {
+                $item = array(
+                    'Id'=>$row_normal['Id'],
+                    'total_card' => $total_card,
+                    'total_active' => $total_active,
+                    'total_used' => $total_used,
+                    'total_suspend' => $total_suspend,
+                    'Amount' => $total_amount,
+                    'Name' => $row['Name'],
+                    'Normal_agent' => $name,
+                    'Company' => $company,
+                    'Pay' => $pay,
+                    'Balance' => $balance
+                );
+                array_push($arr_push, $item);
+            }
+
         }
 
         $item_total_end = array(
@@ -534,8 +544,10 @@ class VoucherModel extends BaseModel
         // return list
         $this->output = array(
             'config' => $this->config,
-            'page' => array('title' => "Account Summary", 'template' => 'agent.common.tpl.php', 'custom_inc' => 'on', 'custom_inc_loc' => $this->module_dir . 'inc/agent/add.inc.php'), //'transaction_delete' => $_SESSION['admin']['transaction_delete']),
+            'page' => array('title' => "Account Summary", 'template' => 'agent.common.tpl.php', 'custom_inc' => 'on', 'custom_inc_loc' => $this->module_dir . 'inc/agent/downline.inc.php'),
             'block' => array('side_nav' => $this->module_dir . 'inc/agent/side_nav.agent.inc.php', 'common' => "false"),
+//            'page' => array('title' => "Account Summary", 'template' => 'agent.common.tpl.php', 'custom_inc' => 'on', 'custom_inc_loc' => $this->module_dir . 'inc/agent/add.inc.php'), //'transaction_delete' => $_SESSION['admin']['transaction_delete']),
+//            'block' => array('side_nav' => $this->module_dir . 'inc/agent/side_nav.agent.inc.php', 'common' => "false"),
             'breadcrumb' => HTML::getBreadcrumb($this->module_name, $this->module_default_agent_url, "", $this->config, " Account Summary"),
             'content' => $arr_push,
             'content_param' => array('dr_find'=>$item_dk,'total_end' => $item_total_end, 'count' => count($arr_push), 'total_results' => count($arr_push), 'paginate' => $paginate, 'query_title' => $query_title, 'search' => $search, 'enabled_list' => CRUD::getActiveList(), 'agent_list' => $arr_nomal),
@@ -625,6 +637,37 @@ class VoucherModel extends BaseModel
         }
         else{
             return 0;
+        }
+    }
+    public function agentPay(){
+        $id=$this->checkGetParamSecurity('id');
+        $value=$this->checkGetParamSecurity('value');
+        $value_old=$this->checkGetParamSecurity('value_old');
+        $value_amount=$this->checkGetParamSecurity('value_amount');
+        $total_amount=$this->checkGetParamSecurity('total_amount');
+        $total_pay=$this->checkGetParamSecurity('total_pay');
+        $pay=$total_pay+($value-$value_old);
+        if($id==''||$value=='')
+        {
+            return 0;
+        }
+        $sqltoken = "UPDATE agent SET Pay =$value WHERE ID = ".$id;
+        $count = $this->dbconnect->exec($sqltoken);
+        if($count>0){
+            $item=array(
+                'value'=>number_format($value, 2, '.',','),
+                'value_amount'=>number_format($value_amount, 2, '.',','),
+                'balance'=>number_format($value_amount-$value, 2, '.',','),
+                'total_pay_format'=>number_format($pay, 2, '.',','),
+                'total_pay'=>$pay,
+                'total_balance_format'=>number_format($total_amount-$pay, 2, '.',','),
+
+            );
+            return json_encode($item);
+
+        }
+        else{
+            return '';
         }
     }
 
