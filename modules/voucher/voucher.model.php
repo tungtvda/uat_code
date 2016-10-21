@@ -502,11 +502,12 @@ class VoucherModel extends BaseModel
 
                 $count_check++;
             }
-            $total_amount_end += $total_amount;
-            $balance = $total_amount - $pay;
-            $balance_end += $balance;
+
             if($count_check>0)
             {
+                $total_amount_end += $total_amount;
+                $balance = $total_amount - $pay;
+                $balance_end += $balance;
                 $item = array(
                     'Id'=>$row_normal['Id'],
                     'total_card' => $total_card,
