@@ -53,7 +53,7 @@
                     });
                 }
             });
-            var rowCount = $('#myTable >tbody >tr:visible').length-1;
+            var rowCount = $('#myTable >tbody >tr:visible').length;
             $('#total_res').text(rowCount);
         });
         $("#search").change(function() {
@@ -70,7 +70,7 @@
                     });
                 }
             });
-            var rowCount = $('#myTable >tbody >tr:visible').length-1;
+            var rowCount = $('#myTable >tbody >tr:visible').length;
             $('#total_res').text(rowCount);
         });
 

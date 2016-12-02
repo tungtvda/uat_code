@@ -13,7 +13,7 @@
 </noscript>
 <?php } ?>       
 </head>
-<body onLoad="goforit()">
+<body onLoad="">
 <div id="wrapper">
   
   <?php include($data['config']['THEME_DIR_INC'].'inc/agent.header.inc.php'); ?>
