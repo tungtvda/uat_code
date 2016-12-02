@@ -64,6 +64,16 @@ class VoucherModel extends BaseModel
 // function show interface list voucher
     public function agentIndex($param)
     {
+        if(isset($_POST['value_action'])&&isset($_POST['check_box_action'])){
+            $check_box_action=$_POST['check_box_action'];
+            $value_action=$this->checkPostParamSecurity('value_action');
+            if(count($check_box_action)>0&&$value_action!=''){
+                foreach($check_box_action as $val){
+                    $sqltoken = "UPDATE agent_voucher_password SET Status =$value_action WHERE ID = ".$val;
+                    $this->dbconnect->exec($sqltoken);
+                }
+            }
+        }
         // Initialise query conditions
         $query_condition = "";
 
@@ -315,6 +325,7 @@ class VoucherModel extends BaseModel
                 'Password' => $row_pass['Password'],
                 'User' => $row_pass['UserId'],
                 'Status' => $row_pass['Status'],
+                'Name_user'=>$this->returnMember($row_pass['UserId'])['Name'],
             );
             array_push($result_pass, $item);
             $j++;
@@ -628,18 +639,40 @@ class VoucherModel extends BaseModel
     public function agentStatus(){
         $id=$this->checkGetParamSecurity('id');
         $value=$this->checkGetParamSecurity('value');
+        $update_all=$this->checkGetParamSecurity('update_all');
+        $id_par=$this->checkGetParamSecurity('id_par');
+        $query_count = "SELECT COUNT(*) AS num FROM agent_voucher WHERE 	Id =".$id_par;
+        $total_pages = $this->dbconnect->query($query_count)->fetchColumn();
+        if ($total_pages == 0) {
+            return 0;
+        }
         if($id==''||$value=='')
         {
             return 0;
         }
-        $sqltoken = "UPDATE agent_voucher_password SET Status =$value WHERE ID = ".$id;
-        $count = $this->dbconnect->exec($sqltoken);
-        if($count>0){
-            return 1;
+        if($update_all!=0)
+        {
+            $sqltoken = "UPDATE agent_voucher_password SET Status =$value WHERE Agent_voucher_id = ".$id_par;
+            $count = $this->dbconnect->exec($sqltoken);
+            if($count>0){
+                return 1;
+            }
+            else{
+                return 0;
+            }
         }
         else{
-            return 0;
+            $sqltoken = "UPDATE agent_voucher_password SET Status =$value WHERE ID = ".$id;
+            $count = $this->dbconnect->exec($sqltoken);
+            if($count>0){
+                return 1;
+            }
+            else{
+                return 0;
+            }
         }
+
+
     }
     public function agentPay(){
         $id=$this->checkGetParamSecurity('id');

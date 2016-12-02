@@ -102,7 +102,7 @@
                 </select>
               </td>
               <td>
-                <span class="password_right"></span>
+                <span class="password_right"><?php echo $row_pass['Name_user']?></span>
               </td>
             </tr>
             <?php }?>
