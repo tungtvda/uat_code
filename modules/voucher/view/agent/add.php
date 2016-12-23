@@ -50,7 +50,7 @@ function familyTree($array)
     </tr>
       <tr>
           <th scope="row"><label>Voucher for which normal agent <span class="label_required">*</span></label></th>
-          <td><select style="width: 276px" name="Normal_agent_id" r  class="chosen validate[required]">
+          <td><select style="width: 276px" name="Normal_agent_id" required  class="chosen validate[required]">
                   <option value="">Select normal agent</option>
                   <?php for ($i=0; $i<$data['content_param']['agent_list']['count']; $i++) { ?>
                       <option value="<?php echo $data['content_param']['agent_list'][$i]['ID']; ?>">

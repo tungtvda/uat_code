@@ -24,7 +24,8 @@
 <script src="<?php echo $data['config']['SITE_DIR']; ?>/lib/timepicker/jquery-ui-timepicker-addon.js"></script>
 <link href="<?php echo $data['config']['SITE_DIR']; ?>/lib/timepicker/jquery-ui-timepicker-addon.css" rel="stylesheet" type="text/css" />
 <script type="text/javascript" src="<?php echo $data['config']['THEME_DIR']; ?>js/custom/jquery.ui.autocomplete.html.js"></script>
-
+<script src="<?php echo $data['config']['SITE_DIR']; ?>/lib/dialog/dialog.js"></script>
+<link rel="stylesheet" href="<?php echo $data['config']['SITE_DIR']; ?>/lib/dialog/dialog.css" />
 <script type="text/javascript">
 function call_confirm(){
    var answer = window.confirm ("Are you sure you want to delete?");
