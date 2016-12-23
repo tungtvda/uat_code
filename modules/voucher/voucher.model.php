@@ -670,7 +670,7 @@ class VoucherModel extends BaseModel
         }
         if($update_all!=0)
         {
-            $sqltoken = "UPDATE agent_voucher_password SET Status =$value WHERE Status!=1 and Agent_voucher_id = ".$id_par;
+            $sqltoken = "UPDATE agent_voucher_password SET Status = $value WHERE Status!=1 and Agent_voucher_id = ".$id_par;
             $count = $this->dbconnect->exec($sqltoken);
             if($count>0){
                 return 1;
@@ -680,7 +680,7 @@ class VoucherModel extends BaseModel
             }
         }
         else{
-            $sqltoken = "UPDATE agent_voucher_password SET Status =$value WHERE ID = ".$id;
+            $sqltoken = "UPDATE agent_voucher_password SET Status = $value WHERE ID = ".$id;
             $count = $this->dbconnect->exec($sqltoken);
             if($count>0){
                 return 1;
