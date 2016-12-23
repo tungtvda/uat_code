@@ -69,8 +69,16 @@ class VoucherModel extends BaseModel
             $value_action=$this->checkPostParamSecurity('value_action');
             if(count($check_box_action)>0&&$value_action!=''){
                 foreach($check_box_action as $val){
-                    $sqltoken = "UPDATE agent_voucher_password SET Status =$value_action WHERE ID = ".$val;
-                    $this->dbconnect->exec($sqltoken);
+                    $sql_pass = "SELECT * FROM agent_voucher_password WHERE ID = '" . $val . "'";
+                    foreach ($this->dbconnect->query($sql_pass) as $row_pass) {
+                        if(count($row_pass)>0){
+                            if($row_pass['Status']!=1){
+                                $sqltoken = "UPDATE agent_voucher_password SET Status =$value_action WHERE ID = ".$val;
+                                $this->dbconnect->exec($sqltoken);
+                            }
+                        }
+                    }
+
                 }
             }
         }
@@ -402,15 +410,14 @@ class VoucherModel extends BaseModel
             array_push($arr_nomal, $item);
             array_push($arr_nomal_id,array('Id'=> $row_nomal['ID'], 'Pay'=> $row_nomal['Pay']));
         }
-
-        $id = '';
         if (isset($_GET['Normal_agent_id']) && $_GET['Normal_agent_id'] !=0&& $_GET['Normal_agent_id'] !='') {
             $id  = addslashes(strip_tags($_GET['Normal_agent_id']));
-            $arr_nomal_id=array($id);
+            $item=array(
+                'Id'=>$id
+            );
+            $arr_nomal_id=array($item);
 
         }
-
-
         $arr_check = array();
         //Total
         $total_card_end = 0;
@@ -461,8 +468,10 @@ class VoucherModel extends BaseModel
         }
         // Initialize Pagination
         $paginate = $crud->paginate($targetpage, $total_pages, $limit, $stages, $page);
+
         foreach($arr_nomal_id as $row_normal)
         {
+
             $total_amount=0;
             $total_card = 0;
             $total_active = 0;
@@ -471,10 +480,17 @@ class VoucherModel extends BaseModel
             $pay = $row_normal['Pay'];
 
             $balance = 0;
-            $dk = ' Start_date >= "' . $start_date . '" and End_date <="' . $end_date . '" and Normal_agent_id=' . $row_normal['Id'];
+            if (isset($_GET['Start_date']) && isset($_GET['End_date']) && $_GET['End_date'] != '' && $_GET['Start_date'] != '') {
+                $dk = ' Start_date >= "' . $start_date . '" and End_date <="' . $end_date . '" and Normal_agent_id=' . $row_normal['Id'];
+            }
+            else{
+                $dk = ' Normal_agent_id=' . $row_normal['Id'];
+            }
+
             $sql = "SELECT * FROM agent_voucher WHERE " . $dk . " ORDER BY Normal_agent_id asc ";
             $count_check=0;
             foreach ($this->dbconnect->query($sql) as $row) {
+
                 $sql_pass = "SELECT * FROM agent_voucher_password WHERE Agent_voucher_id = '" . $row['Id'] . "'";
                 foreach ($this->dbconnect->query($sql_pass) as $row_pass) {
                     $total_card++;
@@ -537,6 +553,8 @@ class VoucherModel extends BaseModel
             }
 
         }
+//        print_r($arr_push);
+//        exit;
 
         $item_total_end = array(
             'total_card_end' => $total_card_end,
@@ -652,7 +670,7 @@ class VoucherModel extends BaseModel
         }
         if($update_all!=0)
         {
-            $sqltoken = "UPDATE agent_voucher_password SET Status =$value WHERE Agent_voucher_id = ".$id_par;
+            $sqltoken = "UPDATE agent_voucher_password SET Status =$value WHERE Status!=1 and Agent_voucher_id = ".$id_par;
             $count = $this->dbconnect->exec($sqltoken);
             if($count>0){
                 return 1;

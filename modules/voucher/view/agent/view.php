@@ -102,7 +102,13 @@
                 </select>
               </td>
               <td>
-                <span class="password_right"><?php echo $row_pass['Name_user']?></span>
+                <?php
+                $name='_';
+                if($row_pass['Name_user']!=''){
+                  $name=$row_pass['Name_user'];
+                }
+                ?>
+                <span class="password_right"><?php echo $name?></span>
               </td>
             </tr>
             <?php }?>

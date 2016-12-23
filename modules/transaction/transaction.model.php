@@ -3834,6 +3834,18 @@ class TransactionModel extends BaseModel
         $child = implode(',', $_SESSION['agentchild']);
         //echo $child;
         //exit;
+        // select
+        $string_member='';
+        $sql_voucher="select  * from agent_voucher where AgentID=".$_SESSION['agent']['ID'];
+        foreach ($this->dbconnect->query($sql_voucher) as $row_voucher) {
+            $sql_voucher_member="select  MemberID  from transaction   where voucherId=".$row_voucher['Id']." GROUP BY MemberID";
+            foreach ($this->dbconnect->query($sql_voucher_member) as $row_voucher_member) {
+                $sql_voucher_member_agent="select  Agent  from member   where ID=".$row_voucher_member['MemberID'];
+                foreach($this->dbconnect->query($sql_voucher_member_agent) as $row_member){
+                    $string_member.=','.$row_member['Agent'];
+                }
+            }
+        }
 
         unset($_SESSION['agentchild']);
 
@@ -3841,7 +3853,7 @@ class TransactionModel extends BaseModel
         if (isset($_SESSION['transaction_' . __FUNCTION__]['param']['m.Agent']) === true && empty($_SESSION['transaction_' . __FUNCTION__]['param']['m.Agent']) === false) {
             $query_part = "";
         } else {
-            $query_part = "AND m.Agent IN (" . $child . ")";
+            $query_part = "AND m.Agent IN (" . $child .") ";
         }
 
         //echo 'hi';
@@ -3850,7 +3862,6 @@ class TransactionModel extends BaseModel
         //echo $query_count;
         //echo $query_count;
         $total_pages = $this->dbconnect->query($query_count)->fetchColumn();
-
         $targetpage = $data['config']['SITE_DIR'] . '/agent/transaction/group';
         $limit = 10;
         $stages = 3;
@@ -3950,7 +3961,329 @@ class TransactionModel extends BaseModel
 
 
         }
+        $transaction['count'] = $i;
 
+        //}
+
+
+        /*$IDarray = explode(",", $child);
+                        $IDarray['count'] = count($IDarray);*/
+        //echo
+
+        /*$report = array();
+                             for ($c = 0; $c < $IDarray['count']; $c++) {
+                                 $report[$c] = AgentModel::getAgentGroupReport($IDarray[$c], $filename);
+                             }
+                            //Debug::displayArray($report);
+                             $report['count'] = count($report);
+                             $In = 0;
+                             $Out = 0;
+                             $Commission = 0;
+                             $Bonus = 0;
+                             $Profit = 0;
+                             $Profitsharing = 0;
+                             $Percentage = 0;
+                             for ($r = 0; $r < $report['count']; $r++) {
+
+                                 $In += $report[$r]['In'];
+                                 $Out += $report[$r]['Out'];
+                                 $Commission += $report[$r]['Commission'];
+                                 $Bonus += $report[$r]['Bonus'];
+                                 $Profit += $report[$r]['Profit'];
+                                 $Profitsharing += $report[$r]['Profitsharing'];
+                                 $Percentage += $report[$r]['Percentage'];
+
+                             }
+
+                             unset($report);*/
+        $data = array();
+        $data = AgentModel::getAgentGroupReport($child, $filename);
+
+        $report = array();
+        $report['In'] = $data['In'];
+        $report['Out'] = $data['Out'];
+        $report['Commission'] = $data['Commission'];
+        $report['Bonus'] = $data['Bonus'];
+        $report['Profit'] = $data['Profit'];
+        $report['Profitsharing'] = $data['Profitsharing'];
+        $report['Percentage'] = $data['Percentage'];
+
+
+        /*unset($profit);
+                             unset($In);
+                             unset($Out);
+                             unset($Commission);
+                             unset($Bonus);
+                             unset($Total);
+                             unset($Percentage);*/
+
+        //Debug::displayArray($report);
+
+
+        $param = $_SESSION['agent']['ID'];
+        AgentModel::getAgentCredit($_SESSION['agent']['ID']);
+
+        $sql2 = "SELECT * FROM agent WHERE Enabled = 1 AND ID = '" . $_SESSION['agent']['ID'] . "'";
+
+        $result2 = array();
+        $z = 0;
+        $tier = 1;
+        foreach ($this->dbconnect->query($sql2) as $row2) {
+            $result2[$z] = array(
+                'ID' => $row2['ID'],
+                'Child' => AgentModel::getAgentChild($row2['ID'], $tier),
+                'Name' => $row2['Name'],
+                'Company' => $row2['Company']);
+
+            $z += 1;
+        }
+
+        $result2['count'] = $z;
+
+        $_SESSION['agent']['redirect'] = __FUNCTION__;
+
+
+        $this->output = array(
+            'config' => $this->config,
+            'page' => array('title' => "Agent's Group Member Transactions", 'template' => 'agent.common.tpl.php', 'custom_inc' => 'on', 'custom_inc_loc' => $this->module_dir . 'inc/agent/group.inc.php'), //'transaction_delete' => $_SESSION['admin']['transaction_delete']),
+            'block' => array('side_nav' => $this->module_dir . 'inc/agent/side_nav.agent.inc.php', 'common' => "false"),
+            'membertotal' => $membertotal,
+            'agent' => $result2,
+            'breadcrumb' => HTML::getBreadcrumb($this->module_name, $this->module_default_agentgroup_url, "", $this->config, "Agent's Group Member Transactions"),
+            'content' => $transaction,
+            'report' => $report,
+            'content_param' => array('count' => $i, 'total_results' => $total_pages, 'paginate' => $paginate, 'query_title' => $query_title, 'search' => $search, 'enabled_list' => CRUD::getActiveList(), 'member_list' => MemberModel::getMemberListByAgentAgent($param), 'transactiontype_list' => TransactionTypeModel::getTransactionTypeList(), 'transactionstatus_list' => TransactionStatusModel::getTransactionStatusList(), 'agent_list' => AgentModel::getAgentListByParent($_SESSION['agent']['ID']), 'bank_list' => BankModel::getBankList(), 'agentpromotion_list' => AgentPromotionModel::getEnabledAgentPromotionList()),
+            'secure' => TRUE,
+            'meta' => array('active' => "on"));
+
+        /*Debug::displayArray($this->output);
+		exit;*/
+
+        return $this->output;
+    }
+
+    public function AgentGroup_BK($param)
+    {
+        $filename = __FUNCTION__;
+        // Initialise query conditions
+        $query_condition = "";
+
+        $crud = new CRUD();
+
+        if ($_POST['Trigger'] == 'search_form') {
+            //if ($_POST['Trigger']=='search_form'){
+            // Reset Query Variable
+            $_SESSION['transaction_' . __FUNCTION__] = "";
+
+            if ($_POST['Member'] == '') {
+                $_POST['MemberID'] = '';
+            }
+
+
+            $query_condition .= $crud->queryCondition("t.TypeID", $_POST['TypeID'], "=", 1);
+            $query_condition .= $crud->queryCondition("m.Agent", $_POST['Agent'], "=");
+
+            $query_condition .= $crud->queryCondition("t.MemberID", $_POST['MemberID'], "=");
+
+            $query_condition .= $crud->queryCondition("t.Description", $_POST['Description'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.Promotion", $_POST['Promotion'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.BankSlip", $_POST['BankSlip'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.RejectedRemark", $_POST['RejectedRemark'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.Date", Helper::dateTimeDisplaySQL($_POST['DateFrom']), ">=");
+            $query_condition .= $crud->queryCondition("t.Date", Helper::dateTimeDisplaySQL($_POST['DateTo']), "<=");
+            $query_condition .= $crud->queryCondition("t.Debit", $_POST['Debit'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.Credit", $_POST['Credit'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.Status", $_POST['Status'], "=");
+            $query_condition .= $crud->queryCondition("t.DepositBonus", $_POST['DepositBonus'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.DepositChannel", $_POST['DepositChannel'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.ReferenceCode", $_POST['ReferenceCode'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.Bank", $_POST['Bank'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.TransferFrom", $_POST['TransferFrom'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.TransferTo", $_POST['TransferTo'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.Amount", $_POST['Amount'], "LIKE");
+            $query_condition .= $crud->queryCondition("t.Bonus", $_POST['Bonus'], ">=");
+            $query_condition .= $crud->queryCondition("t.Commission", $_POST['Commission'], ">=");
+
+
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.TypeID'] = $_POST['TypeID'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['m.Agent'] = $_POST['Agent'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.MemberID'] = $_POST['MemberID'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['Member'] = $_POST['Member'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.Description'] = $_POST['Description'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.Promotion'] = $_POST['Promotion'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.BankSlip'] = $_POST['BankSlip'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.RejectedRemark'] = $_POST['RejectedRemark'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.DateFrom'] = $_POST['DateFrom'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.DateTo'] = $_POST['DateTo'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.Debit'] = $_POST['Debit'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.Credit'] = $_POST['Credit'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.Status'] = $_POST['Status'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.DepositBonus'] = $_POST['DepositBonus'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.DepositChannel'] = $_POST['DepositChannel'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.ReferenceCode'] = $_POST['ReferenceCode'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.Bank'] = $_POST['Bank'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.TransferFrom'] = $_POST['TransferFrom'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.TransferTo'] = $_POST['TransferTo'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.Amount'] = $_POST['Amount'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.Bonus'] = $_POST['Bonus'];
+            $_SESSION['transaction_' . __FUNCTION__]['param']['t.Commission'] = $_POST['Commission'];
+
+
+            // Set Query Variable
+            $_SESSION['transaction_' . __FUNCTION__]['query_condition'] = $query_condition;
+            $_SESSION['transaction_' . __FUNCTION__]['query_title'] = "Search Results";
+        }
+        //}
+        // Reset query conditions
+        if ($_GET['page'] == "all") {
+            $_GET['page'] = "";
+            unset($_SESSION['transaction_' . __FUNCTION__]);
+        }
+
+        // Determine Title
+        if (isset($_SESSION['transaction_' . __FUNCTION__])) {
+            $query_title = "Search Results";
+            $search = "on";
+        } else {
+            $query_title = "All Results";
+            $search = "off";
+        }
+
+
+        $_SESSION['agentchild'] = array();
+        array_push($_SESSION['agentchild'], $_SESSION['agent']['ID']);
+        //Debug::displayArray($_SESSION['agentchild']);
+        //exit;
+        $count = AgentModel::getAgentChildExist($_SESSION['agent']['ID']);
+
+        if ($count > '0') {
+            AgentModel::getAgentAllChild($_SESSION['agent']['ID']);
+        }
+
+
+        $child = implode(',', $_SESSION['agentchild']);
+
+        unset($_SESSION['agentchild']);
+
+        if (isset($_SESSION['transaction_' . __FUNCTION__]['param']['m.Agent']) === true && empty($_SESSION['transaction_' . __FUNCTION__]['param']['m.Agent']) === false) {
+            $query_part = "";
+        } else {
+            if($_SESSION['agent']['TypeID']==1){
+                $query_part = "AgentID=".$_SESSION['agent']['ID'];
+            }
+            else{
+                $query_part = "AgentNormalID=".$_SESSION['agent']['ID'];
+            }
+        }
+
+
+        //echo 'hi';
+        // Prepare Pagination
+
+        $query_count = "SELECT COUNT(*) FROM transaction WHERE " . $query_part . " " . $_SESSION['transaction_' . __FUNCTION__]['query_condition'];
+        //echo $query_count;
+        //echo $query_count;
+        $total_pages = $this->dbconnect->query($query_count)->fetchColumn();
+        $targetpage = $data['config']['SITE_DIR'] . '/agent/transaction/group';
+        $limit = 10;
+        $stages = 3;
+        $page = mysql_escape_string($_GET['page']);
+        if ($page) {
+            $start = ($page - 1) * $limit;
+        } else {
+            $start = 0;
+        }
+
+        //echo 'hi';
+        // Initialize Pagination
+        $paginate = $crud->paginate($targetpage, $total_pages, $limit, $stages, $page);
+
+
+        $sql = "SELECT t.ID AS t_ID, t.TypeID AS t_TypeID, t.ProductID AS t_ProductID, t.BankSlip AS t_BankSlip, t.MemberID AS t_MemberID, t.Description AS t_Description, t.RejectedRemark AS t_RejectedRemark, t.Date AS t_Date, t.TransferTo AS t_TransferTo, t.TransferFrom AS t_TransferFrom, t.DepositBonus as t_DepositBonus, t.DepositChannel as t_DepositChannel, t.ReferenceCode as t_ReferenceCode, t.Bonus as t_Bonus, t.Commission as t_Commission, t.Bank as t_Bank, t.Debit as t_Debit, t.StaffID as t_StaffID, t.StaffIDUpdated as t_StaffIDUpdated, t.OperatorID as t_OperatorID, t.OperatorIDUpdated as t_OperatorIDUpdated, t.ModifiedDate as t_ModifiedDate, t.UpdatedDate as t_UpdatedDate, t.Credit as t_Credit, t.Amount as t_Amount, t.Status as t_Status, t.AgentID as t_StaffID FROM transaction AS t WHERE  " . $query_part . " " . $_SESSION['transaction_' . __FUNCTION__]['query_condition'] . " ORDER BY t.Date DESC, t.ID DESC LIMIT $start, $limit";
+
+
+        //echo $sql;
+        //exit;
+        $transaction = array();
+        //$transaction['count'] = $result['count'];
+        $i = 0;
+
+        foreach ($this->dbconnect->query($sql) as $row) {
+
+            // Determine first modified person
+            if ($row['t_StaffID'] != 0) {
+                $ModifiedPerson = $row['t_StaffID'];
+                $ModifiedPerson = StaffModel::getStaff($row['t_StaffID'], "Username") . " (staff)";
+            } else if ($row['t_OperatorID'] != 0) {
+                $ModifiedPerson = $row['t_OperatorID'];
+                $ModifiedPerson = OperatorModel::getOperator($row['t_OperatorID'], "Username") . " (agent)";
+            }
+
+            // Determine last update person
+            if ($row['t_StaffIDUpdated'] != 0) {
+                $UpdatedPerson = $row['t_StaffIDUpdated'];
+                $UpdatedPerson = StaffModel::getStaff($row['t_StaffIDUpdated'], "Username") . " (staff)";
+            } else if ($row['t_OperatorIDUpdated'] != 0) {
+                $UpdatedPerson = $row['t_OperatorIDUpdated'];
+                $UpdatedPerson = OperatorModel::getOperator($row['t_OperatorIDUpdated'], "Username") . " (agent)";
+            }
+
+            if ($row['t_ModifiedDate'] == '0000-00-00 00:00:00') {
+                $ModifiedDate = '0000-00-00 00:00:00';
+            } else {
+                $ModifiedDate = date("d-m-Y | h.i", strtotime(Helper::dateTimeSQLToDisplay($row['t_ModifiedDate'])));
+            }
+
+            if ($row['t_UpdatedDate'] == '0000-00-00 00:00:00') {
+                $UpdatedDate = '0000-00-00 00:00:00';
+            } else {
+                $UpdatedDate = date("d-m-Y | h.i", strtotime(Helper::dateTimeSQLToDisplay($row['t_UpdatedDate'])));
+            }
+
+
+            $transaction[$i] = array(
+                'ID' => $row['t_ID'],
+                'GameUsername' => WalletModel::getWalletUsername($row['t_MemberID'], $row['t_ProductID']),
+                'Agent' => $row['m_Agent'],
+                'AgentDetails' => MemberModel::getMemberResellerCompany($row['t_MemberID']),
+                'AgentType' => MemberModel::getMemberResellerType($row['t_MemberID']),
+                'AgentID' => MemberModel::getMemberResellerID($row['t_MemberID']),
+                'MainWallet' => Helper::displayCurrency(WalletModel::getMemberWalletTotal($row['t_MemberID'])),
+                'TypeID' => TransactionTypeModel::getTransactionType($row['t_TypeID']),
+                #'Report' => ResellerModel::getResellerReport($_SESSION['reseller']['ID'], $filename),
+                'MemberID' => MemberModel::getMemberName($row['t_MemberID']),
+                'RawMemberID' => $row['t_MemberID'],
+                'MemberUsername' => MemberModel::getMemberUsername($row['t_MemberID']),
+                'WalletID' => WalletModel::getWalletID($row['t_MemberID'], $row['t_ProductID']),
+                'Description' => $row['t_Description'],
+                'RejectedRemark' => $row['t_RejectedRemark'],
+                'Date' => Helper::dateTimeSQLToDisplay($row['t_Date']),
+                'TransferTo' => $row['t_TransferTo'],
+                'TransferFrom' => $row['t_TransferFrom'],
+                /*'Bonus' => $row['t_Bonus'],
+				'Commission' => $row['t_Commission'],*/
+                'DepositBonus' => $row['t_DepositBonus'],
+                'DepositChannel' => $row['t_DepositChannel'],
+                'ReferenceCode' => $row['t_ReferenceCode'],
+                'Bonus' => $row['t_Bonus'],
+                'Commission' => $row['t_Commission'],
+                'Bank' => $row['t_Bank'],
+                'BankSlip' => $row['t_BankSlip'],
+                'In' => Helper::displayCurrency($row['t_Debit']),
+                'Out' => Helper::displayCurrency($row['t_Credit']),
+                'Amount' => Helper::displayCurrency($row['t_Amount']),
+                'OperatorID' => ($row['t_OperatorID'] == '0') ? '0' : OperatorModel::getOperator($row['t_OperatorID']),
+                'OperatorIDUpdated' => OperatorModel::getOperator($row['t_OperatorIDUpdated']),
+                'ModifiedDate' => $ModifiedDate,
+                'UpdatedDate' => $UpdatedDate,
+                'ModifiedPerson' => $ModifiedPerson,
+                'UpdatedPerson' => $UpdatedPerson,
+                'Status' => TransactionStatusModel::getTransactionStatus($row['t_Status']));
+
+            $i += 1;
+
+
+        }
         $transaction['count'] = $i;
 
         //}
@@ -4170,6 +4503,8 @@ class TransactionModel extends BaseModel
             $BankSlip=$this->checkPostParamSecurity('BankSlip');
             $ReferenceCode=$this->checkPostParamSecurity('ReferenceCode');
             $DepositChannel=$this->checkPostParamSecurity('DepositChannel');
+            $AgentID='';
+            $Normal_agent_id='';
             if($DepositChannel=='voucher'){
                 $bank='';
                 $code_card=$this->checkPostParamSecurity('code_card');
@@ -4182,21 +4517,37 @@ class TransactionModel extends BaseModel
                     $Id_pass=$check['Id_pass'];
                     $Id_voucher=$check['Id_voucher'];
                     $DepositAmount=$check['Amount'];
+
                     $sql = "UPDATE agent_voucher_password SET Status =1, UserId=".$_SESSION['member']['ID']." WHERE ID = ".$Id_pass;
                     $count = $this->dbconnect->exec($sql);
                     if($count==0)
                     {
                         return 0;
                     }
+                    $sql_agent='select AgentID,Normal_agent_id from agent_voucher where Id='.$Id_voucher;
+                    foreach ($this->dbconnect->query($sql_agent) as $row_agent)
+                    {
+                        $AgentID=$row_agent['AgentID'];
+                        $Normal_agent_id=$row_agent['Normal_agent_id'];
+                    }
+
                 }
             }
             else{
                 $Id_pass='';
+                $Id_voucher='';
                 $bank=$this->checkPostParamSecurity('bank');
                 $DepositAmount=$this->checkPostParamSecurity('DepositAmount');
+
+                $sql_agent='select Agent from  member where ID='.$_SESSION['member']['ID'];
+                foreach ($this->dbconnect->query($sql_agent) as $row_agent)
+                {
+                    $AgentID=$row_agent['Agent'];
+                    $Normal_agent_id=$row_agent['Agent'];
+                }
             }
-            $key = "(MemberID, TypeID, Description, Promotion, Date, DepositChannel, BankSlip, ReferenceCode, Bank, Debit, StaffID, ModifiedDate, Status, VoucherPassId)";
-            $value = "('" . $_SESSION['member']['ID'] . "', '2', '" . $date_deposit . " | " . $PromoSpecial . "', '" . $PromoSpecial . "', '" . $date_posted . "', '" . $DepositChannel . "', '" . $BankSlip . "', '" .$ReferenceCode . "', '" . $bank . "', '" . $DepositAmount . "', '', '', '1',$Id_pass)";
+            $key = "(MemberID, TypeID, Description, Promotion, Date, DepositChannel, BankSlip, ReferenceCode, Bank, Debit, StaffID, ModifiedDate, Status,voucherId, VoucherPassId, AgentID,AgentNormalID)";
+            $value = "('" . $_SESSION['member']['ID'] . "', '2', '" . $date_deposit . " | " . $PromoSpecial . "', '" . $PromoSpecial . "', '" . $date_posted . "', '" . $DepositChannel . "', '" . $BankSlip . "', '" .$ReferenceCode . "', '" . $bank . "', '" . $DepositAmount . "', '', '', '1',$Id_voucher,$Id_pass,$AgentID,$Normal_agent_id)";
             $sql = "INSERT INTO transaction " . $key . " VALUES " . $value;
 
             $count_deposit = $this->dbconnect->exec($sql);
@@ -4233,8 +4584,8 @@ class TransactionModel extends BaseModel
                 $description=$this->checkPostParamSecurity('description');
                 $TransferTo=$this->checkPostParamSecurity('TransferTo');
                 $TransferAmount=$this->checkPostParamSecurity('TransferAmount');
-                $key = "(MemberID, TypeID, Description, ProductID, Date, TransferTo, TransferFrom, Amount, StaffID, ModifiedDate,Status, VoucherPassId)";
-                $value = "('" . $_SESSION['member']['ID'] . "', '1', '" . $description . "', '" . $TransferTo . "', '" . $date_posted . "', '" . ProductModel::IDToProductName($TransferTo) . "', '" . ProductModel::IDToProductName('30') . "', '" . $TransferAmount . "', '', '', '1',$Id_pass)";
+                $key = "(MemberID, TypeID, Description, ProductID, Date, TransferTo, TransferFrom, Amount, StaffID, ModifiedDate,Status,voucherId, VoucherPassId, AgentID, AgentNormalID)";
+                $value = "('" . $_SESSION['member']['ID'] . "', '1', '" . $description . "', '" . $TransferTo . "', '" . $date_posted . "', '" . ProductModel::IDToProductName($TransferTo) . "', '" . ProductModel::IDToProductName('30') . "', '" . $TransferAmount . "', '', '', '1',$Id_voucher,$Id_pass,$AgentID,$Normal_agent_id)";
 
                 $sql = "INSERT INTO transaction " . $key . " VALUES " . $value;
 
